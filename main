@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 #import comet.cmds as ccmds
+
 sel=cmds.ls (sl=True)
 lsel=len(sel)
 cmds.sets(em=True, n="CTRset")
@@ -9,20 +10,22 @@ cmds.sets(em=True, n="GRPJNTset")
 cmds.sets(em=True, n="JNTset")
 cmds.sets(em=True, n="CNSTset")
 cmds.sets(em=True, n="FIXset")
+
 size=0
-#lastjoint=null
  
-#print sel, lsel
 mel.eval('source "cometMenu.mel"')
+
+#or each locator do:
 for cont in sel:
     #selects joint
     jointLoop = cmds.ls(cont)
     joint_name = jointLoop[0][:-3]
     #joint2Locator
-    #grp = cmds.group(name=(CTR[0]+'Grp'))
-    #gets location of locator and creates a joint on it
+    
+    #Gets location of locator and creates a joint on it
     TRA = cmds.xform(cont,ws=True, q=True, t=True)
     ROT = cmds.xform(cont,ws=True, q=True, ro=True)
+    #Discriminates HELPER as a an exception to create a Grp 
     if joint_name.find("HELPER") != -1:
         print "Helper"
         cmds.select(clear=True)
@@ -32,12 +35,14 @@ for cont in sel:
         cmds.sets (GPjoint, fe="GRPJNTset")
         cmds.select(clear=True)
     else:
+    	#Creates joint with locators position and rotation and puts it in JNT set
         print "Joint"
         cmds.select(clear=True)
         joint2Locator = cmds.joint(n=cont+"_Jnt", p=TRA, o=ROT, ch=False)
         cmds.sets (joint2Locator, fe="JNTset")
         cmds.select(clear=True)
         
+    #Now that every locator has a joint, parent each to the one befor	
     listJoints = cmds.listConnections('JNTset')
     size=(len(listJoints))
     if size == 1:
@@ -47,18 +52,21 @@ for cont in sel:
         currentJoint = listJoints[size-1]
         #mel.eval('source "cometJointOrient.mel"')
         cmds.parent(lastJoint, currentJoint)
+	#Process to orient joints properly, have found that just using Comet Joint Orient is just as efficient and allows to clean better
         #joint2Locator=cmds.joint(joint2Locator, e=True, oj="xyz", sao="yup")
         #orientCons=cmds.orientConstraint(lastJoint, currentJoint, mo=True)
         #cmds.delete(constraint)
 		#ccmds.cometJointOrient()
 #sel=cmds.select ('JNTset', hi=True)
 
-    #creates control, group (normal, driven)
+    #Creates control, group (normal, driven)
     CTR = cmds.circle (n=cont+"_Ctrl", ch=False, nr=(1,0,0), r=4)
     DRV = cmds.group (n=CTR[0]+"Drv") 
     GP = cmds.group (n=DRV+"Grp") 
     color=0
     joint_name= jointLoop[0][:-3]
+    
+    #Depending on name color codes it
     if joint_name.find("left") != -1:
         color=6
     elif joint_name.find("right") != -1:
@@ -68,11 +76,11 @@ for cont in sel:
     cmds.setAttr (CTR[0]+"Shape.overrideEnabled",1)
     cmds.setAttr (CTR[0]+"Shape.overrideColor",6)
     
-    #creates selection for controls and group
+    #Creates selection for controls and group
     cmds.sets (CTR, fe="CTRset")
     cmds.sets (GP, fe="GRPset")
     
-    #contraints control and joint
+    #WIP - Contraints control and joint (Working on skipping this step or improving it to have them oriented correctly before constraints)
     constraint = cmds.parentConstraint(jointLoop[0],GP, mo=False)
     cmds.delete(constraint)
     listJointParent = cmds.listConnections('JNTset')
@@ -85,7 +93,7 @@ for cont in sel:
         cmds.select(CTR[0])
         cmds.sets(CONSTR, fe="CNSTset")
         
-    #parent controls
+    #Parent controls
     listGroup = cmds.listConnections('GRPset')
     listControl = cmds.listConnections('CTRset')
     size=(len(listGroup))
@@ -98,7 +106,7 @@ for cont in sel:
         currentControl = listControl[size2-1]
         cmds.parent(lastGroup, currentControl)
 
-
+#WIP - Deletes constraints
 listConstraints = cmds.listConnections('CNSTset')  
 for cont in listConstraints:
     cmds.delete(cont)
@@ -124,7 +132,8 @@ for cont in listFixConstraints:
      
 #cmds.delete("CNSTset")
     #cleans and reboots selection 
-    
+
+#Cleans and deletes sets
 cmds.select ("GRPset")
 cmds.ls(sl=True)
 cmds.sets(rm="GRPset")
